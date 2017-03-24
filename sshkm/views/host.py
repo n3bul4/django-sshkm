@@ -107,7 +107,7 @@ def HostDeploy(request):
             else:
                 host = Host.objects.get(id=request.GET['id'])
                 try:
-                    deploy = DeployKeys(GetHostKeys(request.GET['id']), request.GET['id'])
+                    deploy = DeployKeys(request.GET['id'])
                     if deploy == "NTD":
                         messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
                     else:

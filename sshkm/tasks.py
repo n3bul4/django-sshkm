@@ -6,5 +6,5 @@ from sshkm.views.deploy import DeployKeys, GetHostKeys
 # task to deploy ssh-keys to hosts
 @shared_task
 def ScheduleDeployKeys(id):
-    deploy = DeployKeys(GetHostKeys(id), id)
+    deploy = DeployKeys(id)
 

@@ -75,7 +75,8 @@ def GetHostKeys(host_id):
     keys = sorted(set(keys))
     return keys
 
-def DeployKeys(keys, host_id):
+def DeployKeys(host_id):
+    keys = GetHostKeys(host_id)
     host = Host.objects.get(id=host_id)
 
     if len(keys) == 0:
