@@ -19,7 +19,7 @@ class Task():
 
 class Worker(Thread):
     def __init__(self, queue, logger):
-        super(Worker, self).__init__(daemon=True)
+        super(Worker, self).__init__()
         self.queue = queue
         self.logger = logger
         self.running = True
@@ -51,7 +51,7 @@ class Executor(BaseManager):
     REG_METHOD_NAME = 'get_executor_queue' # the name of the method that is registered to obtain the queue
 
     def __init__(self, inet_addr, port, authkey, worker_count, logger=None):
-        super().__init__(address=(inet_addr, port), authkey=authkey)
+        super(Executor, self).__init__(address=(inet_addr, port), authkey=authkey)
         self.queue = Queue()
         self.worker_list = []
         self.worker_count = worker_count
@@ -61,8 +61,7 @@ class Executor(BaseManager):
             logger = logging
 
         self.logger = logger
-        Executor.register(Executor.REG_METHOD_NAME, callable=lambda: self.queue)
-        Executor.register('Listener', Test)     
+        Executor.register(Executor.REG_METHOD_NAME, callable=lambda: self.queue)     
 
     def start_server(self):
         self.logger.info("Starting server with "+str(self.worker_count)+" workers")
@@ -81,18 +80,13 @@ class Executor(BaseManager):
         
         del self.worker_list[:]
 
-class Test():
-    def test():
-        print("Test")
-
 class ExecutorConnection(BaseManager):
     def __init__(self, inet_addr, port, authkey):
-        super().__init__(address=(inet_addr, port), authkey=authkey)
+        super(ExecutorConnection, self).__init__(address=(inet_addr, port), authkey=authkey)
         ExecutorConnection.register(Executor.REG_METHOD_NAME)
-        Executor.register('Listener', Test)  
         ExecutorConnection.connect(self)
         self.queue = getattr(ExecutorConnection, Executor.REG_METHOD_NAME)(self)
-
+        
     def call_async(self, func, *args):
         task = Task(func, *args)
         self.queue.put(task)
