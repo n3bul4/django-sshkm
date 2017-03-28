@@ -18,7 +18,7 @@ from sshkm.views.deploy import DeployKeys, GetHostKeys
 
 from sshkm.models import Host, Setting, Permission
 from sshkm.forms import HostForm
-
+from taskqueue.executor import ExecutorConnection
 
 @login_required
 def HostList(request):
@@ -98,11 +98,16 @@ def HostDeploy(request):
     if settings.SSHKM_DEMO is False:
         try:
             if request.POST.get('id_multiple') is not None:
+                pw=b'g3t1o5t'
+                con = ExecutorConnection('127.0.0.1', 50000, pw)
+
                 for host in request.POST.getlist('id_multiple'):
                     hoststatus = Host.objects.get(id=host)
                     hoststatus.status = 'PENDING'
                     hoststatus.save()
-                    deploy = ScheduleDeployKeys.apply_async([host])
+                    con.call_async(DeployKeys, host)
+                    #deploy = ScheduleDeployKeys.apply_async([host])
+
                 messages.add_message(request, messages.INFO, "Multiple host deployment initiated")
             else:
                 host = Host.objects.get(id=request.GET['id'])
@@ -112,13 +117,13 @@ def HostDeploy(request):
                         messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
                     else:
                         messages.add_message(request, messages.SUCCESS, "Host " + host.name + " deployed")
-                except:
-                    messages.add_message(request, messages.ERROR, "Host " + host.name + " could not be deployed")
+                except Exception as e:
+                    messages.add_message(request, messages.ERROR, "Host " + host.name + " could not be deployed "+str(e))
         except Exception as e:
             if str(e) == "[Errno 111] Connection refused":
                 messages.add_message(request, messages.ERROR, "The host(s) could not be deployed. Celery is not running.")
             else:
-                messages.add_message(request, messages.ERROR, "The host(s) could not be deployed")
+                messages.add_message(request, messages.ERROR, "The host(s) could not be deployed: "+str(e))
     else:
         messages.add_message(request, messages.INFO, "Deployment is disabled in demo mode.")
 

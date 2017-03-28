@@ -87,7 +87,6 @@
 
         <h1>{% block title %}{% endblock %}</h1>
         {% block content %}{% endblock %}
-
       </div>
       <footer class="navbar navbar-inverse navbar-fixed-bottom">
         <div class="container">
@@ -95,6 +94,7 @@
             <ul class="pagination pagination-nav">
               {% block footer %}{% endblock %}
             </ul>
+            <div style="float:right">Python version: {{ python_version }}</div>
           </div>
         </div>
       </footer>

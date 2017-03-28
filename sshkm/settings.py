@@ -15,6 +15,7 @@ INSTALLED_APPS = (
     'django.contrib.staticfiles',
     'bootstrap3',
     'sshkm',
+    'taskqueue',
 )
 
 MIDDLEWARE_CLASSES = (
@@ -41,6 +42,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'sshkm.context_processor.python_version',
             ],
         },
     },
