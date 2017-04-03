@@ -2,6 +2,7 @@ import sys
 import time
 import threading
 import uuid
+import configparser
 
 from multiprocessing import Process, Queue
 from queue import Empty
@@ -63,6 +64,11 @@ class Executor(BaseManager):
         self.logger = logger
         Executor.register(Executor.REG_METHOD_NAME, callable=lambda: self.queue)     
 
+    @staticmethod
+    def from_configfile(configfile, logger=None):
+        config = ExecutorConfig(configfile)
+        return Executor(config.bindaddr, config.port, config.authkey, config.worker_count, logger)
+
     def start_server(self):
         self.logger.info("Starting server with "+str(self.worker_count)+" workers")
         
@@ -92,3 +98,22 @@ class ExecutorConnection(BaseManager):
         self.queue.put(task)
 
         return task.uuid
+
+class ExecutorConfig():
+    def __init__(self, configfile):
+        config = configparser.ConfigParser()
+        config.read(configfile)  
+        config_params = self.get_config_param(config, 'Executor', "Format error: The ini file needs to contain a section with the name 'Executor'")
+        self.authkey = bytes(self.get_config_param(config_params, 'authkey'), 'utf8')
+        self.bindaddr = self.get_config_param(config_params, 'bindaddr')
+        self.port = int(self.get_config_param(config_params, 'port'))
+        self.worker_count = int(self.get_config_param(config_params, 'worker_count'))
+
+    def get_config_param(self, hash, key, errormsg=None):
+        if key in hash:
+            return hash[key]
+        else:
+            if errormsg == None:
+                raise Exception("The config parameter "+key+" was not found")
+
+            raise Exception(errormsg) 

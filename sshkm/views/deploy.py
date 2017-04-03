@@ -9,20 +9,16 @@ except ImportError:
 from sshkm.models import Host, Osuser, Key, KeyGroup, Permission, Setting
 
 
-def CopyKeyfile(host, keyfile, osuser, home, superuser):
-    hostupdate = Host.objects.get(name=host)
-    hostupdate.status = 'PENDING'
-    hostupdate.last_status = timezone.now()
-    hostupdate.save()
+def CopyKeyfile(host, keyfile, osuser, home, superuser, master_key_priv, passphrase):
+    host.saveStatus('PENDING')
+    #key = Setting.objects.get(name='MasterKeyPrivate')
 
-    key = Setting.objects.get(name='MasterKeyPrivate')
+    #try:
+        #passphrase = Setting.objects.get(name='MasterKeyPrivatePassphrase').value
+    #except:
+        #passphrase = None
 
-    try:
-        passphrase = Setting.objects.get(name='MasterKeyPrivatePassphrase').value
-    except:
-        passphrase = None
-
-    pkey = StringIO(key.value)
+    pkey = StringIO(master_key_priv.value)
     if passphrase:
         private_key = paramiko.RSAKey.from_private_key(pkey, password=passphrase)
     else:
@@ -34,25 +30,19 @@ def CopyKeyfile(host, keyfile, osuser, home, superuser):
     client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
     try:
-        client.connect(host, username=superuser, pkey=private_key, timeout=5)
+        client.connect(host.name, username=superuser, pkey=private_key, timeout=5)
 
         client.exec_command('mkdir -p ' + home + '/.ssh')
         client.exec_command('chown ' + osuser + ' ' + home + '/.ssh')
         stdin, stdout, stderr = client.exec_command('echo "' + keyfile + '" > ' + home + '/.ssh/authorized_keys')
         client.exec_command('chown ' + osuser + ' ' + home + '/.ssh/authorized_keys')
         client.exec_command('chmod 600 ' + home + '/.ssh/authorized_keys')
-
         client.close()
-
-        hostupdate.status = 'SUCCESS'
-        hostupdate.last_status = timezone.now()
-        hostupdate.save()
+        host.saveStatus('SUCCESS')
 
         return('OK')
     except Exception as e:
-        hostupdate.status = 'FAILURE'
-        hostupdate.last_status = timezone.now()
-        hostupdate.save()
+        host.saveStatus('FAILURE')
 
         raise
         return('ERROR')
@@ -75,23 +65,17 @@ def GetHostKeys(host_id):
     keys = sorted(set(keys))
     return keys
 
-def DeployKeys(host_id):
+def DeployKeys(host_id, master_key_pub,  master_key_priv, passphrase):
     keys = GetHostKeys(host_id)
     host = Host.objects.get(id=host_id)
 
     if len(keys) == 0:
         # nothing to deploy
-        host.status = 'NOTHING TO DEPLOY'
-        host.last_status = timezone.now()
-        host.save()
+        host.saveStatus('NOTHING TO DEPLOY')
         return "NTD"
     else:
-        key = Setting.objects.get(name='MasterKeyPublic')
-
-        host.status = 'PENDING'
-        host.last_status = timezone.now()
-        host.save()
-
+        #key = Setting.objects.get(name='MasterKeyPublic')
+        host.saveStatus('PENDING')
         try:
             globalsuperuser = Setting.objects.get(name='SuperUser').value
         except:
@@ -105,7 +89,7 @@ def DeployKeys(host_id):
             else:
                 superuser = 'root'
 
-        config_masterkey = key.value
+        config_masterkey = master_key_pub.value
 
         last_home = keys[0][0]
         last_osuser = keys[0][2]
@@ -126,7 +110,7 @@ def DeployKeys(host_id):
             if home != last_home:
                 if osuser == superuser:
                     masterkey = config_masterkey + '\n'
-                CopyKeyfile(host.name, keyfile, last_osuser, last_home, superuser)
+                CopyKeyfile(host, keyfile, last_osuser, last_home, superuser, master_key_priv, passphrase)
                 keyfile = masterkey + publickey + '\n'
             else:
                 keyfile += masterkey + publickey + '\n'
@@ -134,7 +118,7 @@ def DeployKeys(host_id):
             last_osuser = osuser
             masterkey = ''
 
-        CopyKeyfile(host.name, keyfile, last_osuser, last_home, superuser)
+        CopyKeyfile(host, keyfile, last_osuser, last_home, superuser, master_key_priv, passphrase)
 
 def GetHome(osuser_id):
     osuser = Osuser.objects.get(id=osuser_id)

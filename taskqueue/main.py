@@ -11,8 +11,8 @@ if __name__ == "__main__":
 	#format='%(asctime)s %(message)s', 
 	logging.basicConfig(filename='executor.log', filemode='a', level=logging.INFO)
 	pw=b'g3t1o5t'
-	executor = Executor('127.0.0.1', 50000, pw, 3, logger)
-
+	executor = Executor.from_configfile('executor.ini', logger)
+	
 	def sigterm_handler(signal, frame):
 		logger.info('SIGTERM received! Shutting down workers...')
 		executor.stop_server()

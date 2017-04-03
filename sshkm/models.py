@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 class Setting(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -15,6 +16,11 @@ class Host(models.Model):
     description = models.CharField(max_length=191, null=True, blank=True)
     status = models.CharField(max_length=10, null=True, blank=True)
     last_status = models.DateTimeField(null=True, blank=True)
+
+    def saveStatus(self, status):
+        self.status = status
+        self.last_status = timezone.now()
+        self.save()
 
 class Osuser(models.Model):
     name = models.CharField(max_length=191, unique=True)

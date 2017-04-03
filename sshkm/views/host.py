@@ -20,6 +20,13 @@ from sshkm.models import Host, Setting, Permission
 from sshkm.forms import HostForm
 from taskqueue.executor import ExecutorConnection
 
+import paramiko
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 @login_required
 def HostList(request):
     hosts = Host.objects.order_by('name')
@@ -97,22 +104,25 @@ def HostSave(request):
 def HostDeploy(request):
     if settings.SSHKM_DEMO is False:
         try:
+            master_key_pub = Setting.objects.get(name='MasterKeyPublic')
+            master_key_priv = Setting.objects.get(name='MasterKeyPrivate')
+            try:
+                passphrase = Setting.objects.get(name='MasterKeyPrivatePassphrase').value
+            except:
+                passphrase = None
+
             if request.POST.get('id_multiple') is not None:
-                pw=b'g3t1o5t'
+                pw=b'g3t1o5t' #:TODO should be in a config file
                 con = ExecutorConnection('127.0.0.1', 50000, pw)
 
                 for host in request.POST.getlist('id_multiple'):
-                    hoststatus = Host.objects.get(id=host)
-                    hoststatus.status = 'PENDING'
-                    hoststatus.save()
-                    con.call_async(DeployKeys, host)
-                    #deploy = ScheduleDeployKeys.apply_async([host])
+                    con.call_async(DeployKeys, host, master_key_pub, master_key_priv, passphrase)
 
                 messages.add_message(request, messages.INFO, "Multiple host deployment initiated")
             else:
                 host = Host.objects.get(id=request.GET['id'])
                 try:
-                    deploy = DeployKeys(request.GET['id'])
+                    deploy = DeployKeys(request.GET['id'], master_key_pub, master_key_priv, passphrase)
                     if deploy == "NTD":
                         messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
                     else:
