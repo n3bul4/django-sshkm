@@ -19,9 +19,10 @@ class Task():
         self.func(*self.args)
 
 class Worker(Thread):
-    def __init__(self, queue, logger):
+    def __init__(self, queue, worker_sleep_timeout, logger):
         super(Worker, self).__init__()
         self.queue = queue
+        self.worker_sleep_timeout = worker_sleep_timeout
         self.logger = logger
         self.running = True
 
@@ -41,7 +42,7 @@ class Worker(Thread):
             except Empty:
                 pass
 
-            time.sleep(100 / 1000)
+            time.sleep(self.worker_sleep_timeout / 1000)
 
         self.logger.info("Stopped worker: "+self.name)
     
@@ -51,11 +52,12 @@ class Worker(Thread):
 class Executor(BaseManager):
     REG_METHOD_NAME = 'get_executor_queue' # the name of the method that is registered to obtain the queue
 
-    def __init__(self, inet_addr, port, authkey, worker_count, logger=None):
+    def __init__(self, inet_addr, port, authkey, worker_count, worker_sleep_timeout, logger=None):
         super(Executor, self).__init__(address=(inet_addr, port), authkey=authkey)
         self.queue = Queue()
         self.worker_list = []
         self.worker_count = worker_count
+        self.worker_sleep_timeout = worker_sleep_timeout
 
         if logger is None:
             import logging
@@ -67,13 +69,13 @@ class Executor(BaseManager):
     @staticmethod
     def from_configfile(configfile, logger=None):
         config = ExecutorConfig(configfile)
-        return Executor(config.bindaddr, config.port, config.authkey, config.worker_count, logger)
+        return Executor(config.bindaddr, config.port, config.authkey, config.worker_count, config.worker_sleep_timeout, logger)
 
     def start_server(self):
-        self.logger.info("Starting server with "+str(self.worker_count)+" workers")
+        self.logger.info("Starting server with "+str(self.worker_count)+" workers and "+str(self.worker_sleep_timeout)+" ms worker timeout")
         
         for i in range(0, self.worker_count):
-            w = Worker(self.queue, self.logger)
+            w = Worker(self.queue, self.worker_sleep_timeout, self.logger)
             self.worker_list.append(w)
             w.start()
 
@@ -108,6 +110,7 @@ class ExecutorConfig():
         self.bindaddr = self.get_config_param(config_params, 'bindaddr')
         self.port = int(self.get_config_param(config_params, 'port'))
         self.worker_count = int(self.get_config_param(config_params, 'worker_count'))
+        self.worker_sleep_timeout = int(self.get_config_param(config_params, 'worker_sleep_timeout'))
 
     def get_config_param(self, hash, key, errormsg=None):
         if key in hash:
