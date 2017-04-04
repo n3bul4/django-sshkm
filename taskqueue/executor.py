@@ -5,9 +5,12 @@ import uuid
 import configparser
 
 from multiprocessing import Process, Queue
-from queue import Empty
 from multiprocessing.managers import BaseManager
 from threading import Thread
+try:
+    from queue import Empty
+except ImportError:
+    from Queue import Empty
 
 class Task():
     def __init__(self, func, *args):
