@@ -11,7 +11,7 @@ from sshkm.views.group import GroupList, GroupDetail, GroupDelete, GroupSave
 from sshkm.views.host import HostList, HostDetail, HostDelete, HostSave, HostDeploy, HostState
 from sshkm.views.osuser import OsuserList, OsuserDetail, OsuserDelete, OsuserSave
 from sshkm.views.permission import PermissionList, PermissionCreate, PermissionDelete, PermissionSave
-from sshkm.views.deploy import CopyKeyfile, GetHostKeys, DeployKeys, GetHome
+#from sshkm.views.deploy import CopyKeyfile, GetHostKeys, DeployKeys, GetHome
 from sshkm.views.settings import SettingsList, PasswordSave, CreateUser, DeleteUser, MasterKeyPublic, MasterKeyPrivate, Superuser
 
 

@@ -19,6 +19,8 @@ class Task():
         self.func(*self.args)
 
 class Worker(Thread):
+    MILLIS_IN_SECOND = 1000
+
     def __init__(self, queue, worker_sleep_timeout, logger):
         super(Worker, self).__init__()
         self.queue = queue
@@ -42,7 +44,7 @@ class Worker(Thread):
             except Empty:
                 pass
 
-            time.sleep(self.worker_sleep_timeout / 1000)
+            time.sleep(self.worker_sleep_timeout / Worker.MILLIS_IN_SECOND)
 
         self.logger.info("Stopped worker: "+self.name)
     
@@ -94,7 +96,7 @@ class ExecutorConnection(BaseManager):
         ExecutorConnection.register(Executor.REG_METHOD_NAME)
         ExecutorConnection.connect(self)
         self.queue = getattr(ExecutorConnection, Executor.REG_METHOD_NAME)(self)
-        
+
     def call_async(self, func, *args):
         task = Task(func, *args)
         self.queue.put(task)

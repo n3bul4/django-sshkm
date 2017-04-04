@@ -9,23 +9,13 @@ from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 
-import celery
-from celery import uuid
-from celery.result import AsyncResult
-
 from sshkm.tasks import ScheduleDeployKeys
-from sshkm.views.deploy import DeployKeys, GetHostKeys
+from sshkm.views.deploy import DeployKeys, DeployConfig, NothingToDeployException
 
 from sshkm.models import Host, Setting, Permission
 from sshkm.forms import HostForm
 from taskqueue.executor import ExecutorConnection
 
-import paramiko
-
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
 
 @login_required
 def HostList(request):
@@ -104,34 +94,28 @@ def HostSave(request):
 def HostDeploy(request):
     if settings.SSHKM_DEMO is False:
         try:
-            master_key_pub = Setting.objects.get(name='MasterKeyPublic')
-            master_key_priv = Setting.objects.get(name='MasterKeyPrivate')
-            try:
-                passphrase = Setting.objects.get(name='MasterKeyPrivatePassphrase').value
-            except:
-                passphrase = None
+            deployConfig = DeployConfig()
 
             if request.POST.get('id_multiple') is not None:
                 pw=b'g3t1o5t' #:TODO should be in a config file
                 con = ExecutorConnection('127.0.0.1', 50000, pw)
-
+                
                 for host in request.POST.getlist('id_multiple'):
-                    con.call_async(DeployKeys, host, master_key_pub, master_key_priv, passphrase)
+                    con.call_async(DeployKeys, host, deployConfig)
 
                 messages.add_message(request, messages.INFO, "Multiple host deployment initiated")
             else:
                 host = Host.objects.get(id=request.GET['id'])
                 try:
-                    deploy = DeployKeys(request.GET['id'], master_key_pub, master_key_priv, passphrase)
-                    if deploy == "NTD":
-                        messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
-                    else:
-                        messages.add_message(request, messages.SUCCESS, "Host " + host.name + " deployed")
+                    deploy = DeployKeys(request.GET['id'], deployConfig)
+                    messages.add_message(request, messages.SUCCESS, "Host " + host.name + " deployed")
+                except NothingToDeployException as e:
+                    messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
                 except Exception as e:
                     messages.add_message(request, messages.ERROR, "Host " + host.name + " could not be deployed "+str(e))
         except Exception as e:
             if str(e) == "[Errno 111] Connection refused":
-                messages.add_message(request, messages.ERROR, "The host(s) could not be deployed. Celery is not running.")
+                messages.add_message(request, messages.ERROR, "The host(s) could not be deployed. Remote taskqueue is not running.")
             else:
                 messages.add_message(request, messages.ERROR, "The host(s) could not be deployed: "+str(e))
     else:

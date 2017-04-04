@@ -7,129 +7,138 @@ except ImportError:
     from io import StringIO
 
 from sshkm.models import Host, Osuser, Key, KeyGroup, Permission, Setting
+import logging
+
+class DeployConfig():
+    GLOBAL_SUPER_USER = "root"
+
+    def __init__(self):
+        self.master_key_pub = Setting.objects.get(name='MasterKeyPublic')
+        self.master_key_priv = Setting.objects.get(name='MasterKeyPrivate')
+            
+        try:
+            self.passphrase = Setting.objects.get(name='MasterKeyPrivatePassphrase').value
+        except:
+            self.passphrase = None
+
+        try:
+            self.globalsuperuser = Setting.objects.get(name='SuperUser').value
+
+            if not self.globalsuperuser or self.globalsuperuser == "":
+                self.globalsuperuser = DeployConfig.GLOBAL_SUPER_USER
+        except:
+            self.globalsuperuser = DeployConfig.GLOBAL_SUPER_USER
+            
+        
+
+    #sadly RSAKey is not pickelable, so we can't create it in the constructor. 
+    #For now we create it on the fly through this method for every damn host deploy (***sigh***)
+    def getPrivKey(self):
+        pkeyFileHandle = StringIO(self.master_key_priv.value)
+        privKey = paramiko.RSAKey.from_private_key(pkeyFileHandle, password=self.passphrase)
+        pkeyFileHandle.close()
+
+        return privKey
 
 
-def CopyKeyfile(host, keyfile, osuser, home, superuser, master_key_priv, passphrase):
-    host.saveStatus('PENDING')
-    #key = Setting.objects.get(name='MasterKeyPrivate')
+class NothingToDeployException(Exception):
+    pass
 
-    #try:
-        #passphrase = Setting.objects.get(name='MasterKeyPrivatePassphrase').value
-    #except:
-        #passphrase = None
 
-    pkey = StringIO(master_key_priv.value)
-    if passphrase:
-        private_key = paramiko.RSAKey.from_private_key(pkey, password=passphrase)
-    else:
-        private_key = paramiko.RSAKey.from_private_key(pkey)
-    pkey.close()
+class SSHConnection():
+    def __init__(self):
+        self.client = paramiko.SSHClient()
+        self.client.load_system_host_keys()
+        self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    client = paramiko.SSHClient()
-    client.load_system_host_keys()
-    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    def connect(self, host, superuser, private_key, timeout):
+        self.client.connect(host, username=superuser, pkey=private_key, timeout=timeout)
 
-    try:
-        client.connect(host.name, username=superuser, pkey=private_key, timeout=5)
+    def close(self):
+        self.client.close()
 
-        client.exec_command('mkdir -p ' + home + '/.ssh')
-        client.exec_command('chown ' + osuser + ' ' + home + '/.ssh')
-        stdin, stdout, stderr = client.exec_command('echo "' + keyfile + '" > ' + home + '/.ssh/authorized_keys')
-        client.exec_command('chown ' + osuser + ' ' + home + '/.ssh/authorized_keys')
-        client.exec_command('chmod 600 ' + home + '/.ssh/authorized_keys')
-        client.close()
-        host.saveStatus('SUCCESS')
+    def copyKey(self, osuser, home, keyfile):
+        authKeyFile = home + "/.ssh/authorized_keys"
+        sshDir = home + '/.ssh'
+        self.client.exec_command('mkdir -p ' + sshDir)
+        self.client.exec_command('chown ' + osuser + ' ' + sshDir)
+        self.stdin, stdout, stderr = self.client.exec_command('echo "' + keyfile + '" > ' + authKeyFile)
+        self.client.exec_command('chown ' + osuser + ' ' + authKeyFile)
+        self.client.exec_command('chmod 600 ' + authKeyFile)
 
-        return('OK')
-    except Exception as e:
-        host.saveStatus('FAILURE')
+class OsUserInfo():
+    def __init__(self, osuser):
+        self.osuser = osuser
+        self.pubKeys = []
 
-        raise
-        return('ERROR')
+        if osuser.home is None or osuser.home == "":
+            if osuser.name == 'root':
+                self.home = '/root'
+            else:
+                self.home = '/home/' + osuser.name
+        else:
+            self.home = osuser.home
 
-def GetHostKeys(host_id):
-    keys = []
+def getOsuserKeyMap(host_id):
+    osuserMap = {}
 
     permissions = Permission.objects.filter(host_id=host_id).order_by('osuser_id')
+
     for permission in permissions:
-
         keygroups = KeyGroup.objects.filter(group_id=permission.group_id).order_by('key_id')
-        for keygroup in keygroups:
 
+        for keygroup in keygroups:
             key = Key.objects.get(id=keygroup.key_id)
             osuser = Osuser.objects.get(id=permission.osuser_id)
 
             if key.publickey is not None and key.publickey != "":
-                keys.append((GetHome(osuser.id), key.publickey, osuser.name))
+                osuserInfo = None
 
-    keys = sorted(set(keys))
-    return keys
+                if osuser.id in osuserMap:
+                    osuserInfo = osuserMap[osuser.id]
+                else:
+                    osuserInfo = OsUserInfo(osuser)
+                    osuserMap[osuser.id] = osuserInfo
 
-def DeployKeys(host_id, master_key_pub,  master_key_priv, passphrase):
-    keys = GetHostKeys(host_id)
+                osuserInfo.pubKeys.append(key.publickey)
+        
+    return osuserMap
+
+def DeployKeys(host_id, deployConfig):
+    osuserMap = getOsuserKeyMap(host_id)
     host = Host.objects.get(id=host_id)
 
-    if len(keys) == 0:
+    if len(osuserMap) == 0:
         # nothing to deploy
         host.saveStatus('NOTHING TO DEPLOY')
-        return "NTD"
+        raise NothingToDeployException()
     else:
-        #key = Setting.objects.get(name='MasterKeyPublic')
         host.saveStatus('PENDING')
-        try:
-            globalsuperuser = Setting.objects.get(name='SuperUser').value
-        except:
-            globalsuperuser = False
-
+        
         if host.superuser and host.superuser != "":
             superuser = host.superuser
         else:
-            if globalsuperuser and globalsuperuser != "":
-                superuser = globalsuperuser
-            else:
-                superuser = 'root'
+            superuser = deployConfig.globalsuperuser
 
-        config_masterkey = master_key_pub.value
+        sshCon = SSHConnection()
 
-        last_home = keys[0][0]
-        last_osuser = keys[0][2]
-        masterkey = ''
-        keyfile = ''
-        counter = 0
+        try:
+            sshCon.connect(host.name, superuser, deployConfig.getPrivKey(), 5)
 
-        for key in keys:
-            home = key[0]
-            publickey = key[1]
-            osuser = key[2]
+            for id, osuserInfo in osuserMap.items():
+                keyFile = ''
 
-            counter = counter + 1
+                for pubKey in osuserInfo.pubKeys:
+                    keyFile += pubKey + '\n'
 
-            if counter == 1 and osuser == superuser:
-                masterkey = config_masterkey + '\n'
+                if osuserInfo.osuser.name == superuser:
+                    keyFile = deployConfig.master_key_pub.value + '\n' + keyFile
+                
+                sshCon.copyKey(osuserInfo.osuser.name, osuserInfo.home, keyFile)
 
-            if home != last_home:
-                if osuser == superuser:
-                    masterkey = config_masterkey + '\n'
-                CopyKeyfile(host, keyfile, last_osuser, last_home, superuser, master_key_priv, passphrase)
-                keyfile = masterkey + publickey + '\n'
-            else:
-                keyfile += masterkey + publickey + '\n'
-            last_home = home
-            last_osuser = osuser
-            masterkey = ''
-
-        CopyKeyfile(host, keyfile, last_osuser, last_home, superuser, master_key_priv, passphrase)
-
-def GetHome(osuser_id):
-    osuser = Osuser.objects.get(id=osuser_id)
-
-    if osuser.home is None or osuser.home == "":
-        if osuser.name == 'root':
-            home = '/root'
-        else:
-            home = '/home/' + osuser.name
-    else:
-        home = osuser.home
-
-    return home
-
+            host.saveStatus('SUCCESS')
+        except Exception as e:
+            host.saveStatus('FAILURE')
+            raise
+        finally:
+            sshCon.close()

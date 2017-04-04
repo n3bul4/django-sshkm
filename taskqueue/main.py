@@ -4,15 +4,17 @@ if __name__ == "__main__":
 	import signal
 	import logging
 	import django
+	import paramiko
+
 	from executor import Executor
 	from django import db
-	
+
 	logger = logging.getLogger(__name__)
 	#format='%(asctime)s %(message)s', 
 	logging.basicConfig(filename='executor.log', filemode='a', level=logging.INFO)
 	pw=b'g3t1o5t'
 	executor = Executor.from_configfile('executor.ini', logger)
-	
+
 	def sigterm_handler(signal, frame):
 		logger.info('SIGTERM received! Shutting down workers...')
 		executor.stop_server()
