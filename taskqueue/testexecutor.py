@@ -1,3 +1,8 @@
+import os, sys
+abspath = os.path.abspath(os.path.dirname(sys.argv[0]))
+parentpath = os.path.abspath(abspath+"/..")
+sys.path.append(parentpath)
+
 from executor import ExecutorConnection
 from sshkm.views.deploy import DeployKeys, DeployConfig
 from sshkm.models import Setting

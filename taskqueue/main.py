@@ -11,9 +11,13 @@ if __name__ == "__main__":
 
 	logger = logging.getLogger(__name__)
 	#format='%(asctime)s %(message)s', 
-	logging.basicConfig(filename='executor.log', filemode='a', level=logging.INFO)
-	pw=b'g3t1o5t'
-	executor = Executor.from_configfile('executor.ini', logger)
+	
+	abspath = os.path.abspath(os.path.dirname(sys.argv[0]))
+	parentpath = os.path.abspath(abspath+"/..")
+	sys.path.append(parentpath)
+	configfile = abspath+"/executor.ini"
+	logging.basicConfig(filename=abspath+'/executor.log', filemode='a', level=logging.INFO)
+	executor = Executor.from_configfile(configfile, logger)
 
 	def sigterm_handler(signal, frame):
 		logger.info('SIGTERM received! Shutting down workers...')
