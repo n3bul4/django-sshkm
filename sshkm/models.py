@@ -22,6 +22,9 @@ class Host(models.Model):
         self.last_status = timezone.now()
         self.save()
 
+    def toJson(self):
+        return {"id": self.id, "status": self.status, "last_status": self.last_status}
+
 class Osuser(models.Model):
     name = models.CharField(max_length=191, unique=True)
     home = models.CharField(max_length=191, null=True, blank=True)

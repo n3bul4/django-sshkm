@@ -111,43 +111,79 @@ $(document).ready(function(){
 
 
 // monitor deployment
-$('.monitor_state').each(
-  function() {
-    var this_id = this.id;
-    var host_id = this_id.replace(/host/, '');
-    setInterval(
-      function() {
-        if ( $('#'+this_id).hasClass( "monitor_state" ) ) {
-          $.ajax({
-            url: '/host/state/?id='+host_id,
-            dataType : 'json',
-            cache: false,
-            success: function(data) {
-              var iconclass;
-              switch(data.status) {
-                case 'SUCCESS':
-                  iconclass = 'glyphicon glyphicon-ok';
-                  break;
-                case 'FAILURE':
-                  iconclass = 'glyphicon glyphicon-remove';
-                  break;
-                case 'PENDING':
-                  iconclass = 'glyphicon glyphicon-refresh monitor_state';
-                  break;
-                case 'NOTHING TO DEPLOY':
-                  iconclass = 'glyphicon glyphicon-option-horizontal';
-                  break;
-                default:
-                  iconclass = '';
-              }
-              $('#'+this_id).removeClass();
-              $('#'+this_id).addClass(iconclass);
-              $('span#'+this_id).attr('title', data.status+' '+data.last_status);
-            }
-          });
-        }
-      }, 2000
+$(document).ready(
+  function(){
+    var ids = {};
+
+    $('.monitor_state').each(
+      function(){
+        var host_id = this.id.replace(/host/, '');
+        ids[host_id] = host_id;
+      }
     );
+
+    keys = Object.keys(ids);
+
+    if(keys.length > 0){
+      queryString = "";
+
+      for(i=0; i<keys.length; i++)
+        queryString += "id="+keys[i]+"&";
+
+      queryString += 'csrfmiddlewaretoken='+$("input[name='csrfmiddlewaretoken']").val()
+
+      var intervalId = setInterval(
+        function(){
+          $.ajax(
+            {
+              type: "POST",
+              url: '/host/state/',
+              dataType : 'json',
+              data: queryString,
+              cache: false,
+              success: function(data) {
+                var iconclass;
+
+                for(i=0; i<data.length; i++) {                  
+                  switch(data[i].status) {
+                    case 'SUCCESS':
+                      iconclass = 'glyphicon glyphicon-ok';
+                      break;
+                    case 'FAILURE':
+                      iconclass = 'glyphicon glyphicon-remove';
+                      break;
+                    case 'PENDING':
+                      iconclass = 'glyphicon glyphicon-refresh monitor_state';
+                      break;
+                    case 'NOTHING TO DEPLOY':
+                      iconclass = 'glyphicon glyphicon-option-horizontal';
+                      break;
+                    default:
+                      iconclass = '';
+                  }
+
+                  if(data[i].status != 'PENDING'){
+                    delete ids[data[i].id];
+                  }
+
+                  $('#host'+data[i].id).removeClass();
+                  $('#host'+data[i].id).addClass(iconclass);
+                  $('span#host'+data[i].id).attr('title', data[i].status+' '+data[i].last_status);
+                }
+
+                if(Object.keys(ids).length <= 0){
+                  clearInterval(intervalId);
+                }                
+              },
+              error: function(xhr, statusText, err){
+                clearInterval(intervalId);
+                alert("An error occurred while trying to get deployment status: " + xhr.status + " " + err);
+              }
+            }
+          );
+        },
+        2000
+      );
+    }
   }
 );
-

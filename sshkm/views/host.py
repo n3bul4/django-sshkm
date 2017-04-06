@@ -31,14 +31,16 @@ def HostList(request):
 
 @login_required
 def HostState(request):
-    if request.is_ajax():
-        if request.GET['id']:
-            host = Host.objects.get(id=request.GET['id'])
-            data = {"status": host.status, "last_status": localize(host.last_status)}
-    else:
-        data = {"status": None, "last_status": None}
+    ids = request.GET.getlist('id', request.POST.getlist('id'))
+    data = []
+    
+    if len(ids) > 0:
+        hosts = Host.objects.filter(id__in=ids)
 
-    return JsonResponse(data)
+        for host in hosts:
+            data.append(host.toJson())
+
+    return JsonResponse(data, safe=False)
 
 @login_required
 def HostDetail(request):
