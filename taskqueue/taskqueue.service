@@ -1,0 +1,10 @@
+[Unit]
+Description=Remote Taskqueue
+DefaultDependencies=no
+
+[Service]
+Type=forking
+ExecStart=/usr/bin/python /PATHTO/taskqueue/main.py
+
+[Install]
+WantedBy=multi-user.target
