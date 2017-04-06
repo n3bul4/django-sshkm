@@ -113,8 +113,6 @@ def DeployKeys(host_id, deployConfig):
         host.saveStatus('NOTHING TO DEPLOY')
         raise NothingToDeployException()
     else:
-        host.saveStatus('PENDING')
-        
         if host.superuser and host.superuser != "":
             superuser = host.superuser
         else:

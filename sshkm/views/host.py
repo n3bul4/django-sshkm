@@ -101,7 +101,9 @@ def HostDeploy(request):
             if request.POST.get('id_multiple') is not None:
                 pw=b'g3t1o5t' #:TODO should be in a config file
                 con = ExecutorConnection('127.0.0.1', 50000, pw)
-                
+                idList = request.POST.getlist('id_multiple')
+                Host.objects.filter(id__in=idList).update(status='PENDING') # set status of hosts to deploy to PENDING
+
                 for host in request.POST.getlist('id_multiple'):
                     con.call_async(DeployKeys, host, deployConfig)
 

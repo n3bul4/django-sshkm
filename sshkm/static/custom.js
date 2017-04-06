@@ -125,15 +125,15 @@ $(document).ready(
     keys = Object.keys(ids);
 
     if(keys.length > 0){
-      queryString = "";
-
-      for(i=0; i<keys.length; i++)
-        queryString += "id="+keys[i]+"&";
-
-      queryString += 'csrfmiddlewaretoken='+$("input[name='csrfmiddlewaretoken']").val()
-
-      var intervalId = setInterval(
+        var intervalId = setInterval(
         function(){
+          queryString = "";
+
+          for(i=0; i<keys.length; i++)
+            queryString += "id="+keys[i]+"&";
+
+          queryString += 'csrfmiddlewaretoken='+$("input[name='csrfmiddlewaretoken']").val()
+
           $.ajax(
             {
               type: "POST",
@@ -141,11 +141,11 @@ $(document).ready(
               dataType : 'json',
               data: queryString,
               cache: false,
-              success: function(data) {
+              success: function(respData) {
                 var iconclass;
 
-                for(i=0; i<data.length; i++) {                  
-                  switch(data[i].status) {
+                for(i=0; i<respData.length; i++) {                  
+                  switch(respData[i].status) {
                     case 'SUCCESS':
                       iconclass = 'glyphicon glyphicon-ok';
                       break;
@@ -162,18 +162,20 @@ $(document).ready(
                       iconclass = '';
                   }
 
-                  if(data[i].status != 'PENDING'){
-                    delete ids[data[i].id];
+                  if(respData[i].status != 'PENDING'){
+                    delete ids[respData[i].id];
                   }
 
-                  $('#host'+data[i].id).removeClass();
-                  $('#host'+data[i].id).addClass(iconclass);
-                  $('span#host'+data[i].id).attr('title', data[i].status+' '+data[i].last_status);
+                  $('#host'+respData[i].id).removeClass();
+                  $('#host'+respData[i].id).addClass(iconclass);
+                  $('span#host'+respData[i].id).attr('title', respData[i].status+' '+respData[i].last_status);
                 }
 
-                if(Object.keys(ids).length <= 0){
+                keys = Object.keys(ids);
+
+                if(keys.length <= 0){
                   clearInterval(intervalId);
-                }                
+                }       
               },
               error: function(xhr, statusText, err){
                 clearInterval(intervalId);
