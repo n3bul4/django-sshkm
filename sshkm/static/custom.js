@@ -116,6 +116,13 @@ var STATE_SUCCESS = 1
 var STATE_FAILURE = 2
 var STATE_NOTHING_TO_DEPLOY = 3
 
+var STATE_DESC = [
+  "PENDING",
+  "SUCCESS",
+  "FAILURE",
+  "NOTHING TO DEPLOY"
+]
+
 $(document).ready(
   function(){
     var ids = {};
@@ -149,14 +156,17 @@ $(document).ready(
               cache: false,
               success: function(respData) {
                 var iconclass;
-
-                for(i=0; i<respData.length; i++) {                  
+                
+                for(i=0; i<respData.length; i++) { 
+                  var titleAttr = STATE_DESC[respData[i].status]+' '+respData[i].last_status;
+                                  
                   switch(respData[i].status) {
                     case STATE_SUCCESS:
                       iconclass = 'glyphicon glyphicon-ok';
                       break;
                     case STATE_FAILURE:
                       iconclass = 'glyphicon glyphicon-remove';
+                      titleAttr += " "+respData[i].error_msg
                       break;
                     case STATE_PENDING:
                       iconclass = 'glyphicon glyphicon-refresh monitor_state';
@@ -174,7 +184,7 @@ $(document).ready(
 
                   hostTag = $('#host'+respData[i].id);
                   //attr overrides any existing attribute value!
-                  hostTag.attr({"class": iconclass, "title": respData[i].status+' '+respData[i].last_status});
+                  hostTag.attr({"class": iconclass, "title": titleAttr});
                 }
 
                 keys = Object.keys(ids);

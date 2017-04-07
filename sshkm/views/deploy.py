@@ -10,10 +10,6 @@ from sshkm.models import Host, Osuser, Key, KeyGroup, Permission, Setting
 import logging
 
 class DeployConfig():
-    STATE_PENDING = 0
-    STATE_SUCCESS = 1
-    STATE_FAILURE = 2
-    STATE_NOTHING_TO_DEPLOY = 3
     GLOBAL_SUPER_USER = "root"
 
     def __init__(self):
@@ -114,7 +110,7 @@ def DeployKeys(host_id, deployConfig):
 
     if len(osuserMap) == 0:
         # nothing to deploy
-        host.saveStatus(DeployConfig.STATE_NOTHING_TO_DEPLOY)
+        host.saveStatus(Host.STATE_NOTHING_TO_DEPLOY)
         raise NothingToDeployException()
     else:
         if host.superuser and host.superuser != "":
@@ -138,9 +134,9 @@ def DeployKeys(host_id, deployConfig):
                 
                 sshCon.copyKey(osuserInfo.osuser.name, osuserInfo.home, keyFile)
 
-            host.saveStatus(DeployConfig.STATE_SUCCESS)
+            host.saveStatus(Host.STATE_SUCCESS)
         except Exception as e:
-            host.saveStatus(DeployConfig.STATE_FAILURE)
+            host.saveError(str(e))
             raise
         finally:
             sshCon.close()

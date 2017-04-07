@@ -28,10 +28,10 @@ def HostList(request):
 
     context = {
                 'hosts': hosts,
-                'STATE_SUCCESS': DeployConfig.STATE_SUCCESS, 
-                'STATE_PENDING': DeployConfig.STATE_PENDING, 
-                'STATE_FAILURE': DeployConfig.STATE_FAILURE, 
-                'STATE_NOTHING_TO_DEPLOY': DeployConfig.STATE_NOTHING_TO_DEPLOY
+                'STATE_PENDING': Host.STATE_PENDING,
+                'STATE_SUCCESS': Host.STATE_SUCCESS, 
+                'STATE_FAILURE': Host.STATE_FAILURE, 
+                'STATE_NOTHING_TO_DEPLOY': Host.STATE_NOTHING_TO_DEPLOY
               }
 
     return render(request, 'sshkm/host/list.html', context)
@@ -109,7 +109,7 @@ def HostDeploy(request):
                 pw=b'g3t1o5t' #:TODO should be in a config file
                 con = ExecutorConnection('127.0.0.1', 50000, pw)
                 idList = request.POST.getlist('id_multiple')
-                Host.objects.filter(id__in=idList).update(status=DeployConfig.STATE_PENDING) # set status of hosts to deploy to PENDING
+                Host.objects.filter(id__in=idList).update(status=Host.STATE_PENDING) # set status of hosts to deploy to PENDING
 
                 for host in request.POST.getlist('id_multiple'):
                     con.call_async(DeployKeys, host, deployConfig)
