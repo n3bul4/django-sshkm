@@ -111,6 +111,11 @@ $(document).ready(function(){
 
 
 // monitor deployment
+var STATE_PENDING = 0
+var STATE_SUCCESS = 1
+var STATE_FAILURE = 2
+var STATE_NOTHING_TO_DEPLOY = 3
+
 $(document).ready(
   function(){
     var ids = {};
@@ -147,23 +152,23 @@ $(document).ready(
 
                 for(i=0; i<respData.length; i++) {                  
                   switch(respData[i].status) {
-                    case 'SUCCESS':
+                    case STATE_SUCCESS:
                       iconclass = 'glyphicon glyphicon-ok';
                       break;
-                    case 'FAILURE':
+                    case STATE_FAILURE:
                       iconclass = 'glyphicon glyphicon-remove';
                       break;
-                    case 'PENDING':
+                    case STATE_PENDING:
                       iconclass = 'glyphicon glyphicon-refresh monitor_state';
                       break;
-                    case 'NOTHING TO DEPLOY':
+                    case STATE_NOTHING_TO_DEPLOY:
                       iconclass = 'glyphicon glyphicon-option-horizontal';
                       break;
                     default:
                       iconclass = '';
                   }
-
-                  if(respData[i].status != 'PENDING'){
+                  //alert(respData[i].status);
+                  if(respData[i].status != STATE_PENDING){
                     delete ids[respData[i].id];
                   }
 

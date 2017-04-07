@@ -25,13 +25,13 @@
                 <td><input type="checkbox" name="id_multiple" id="{{ host.id }}" value="{{ host.id }}"></td>
                 <td><a href="{% url 'HostDetail' %}?id={{ host.id }}">{{ host.name }}</a></td>
                 <td>
-                  {% if host.status == "SUCCESS" %}
+                  {% if host.status == STATE_SUCCESS %}
                   <span class="glyphicon glyphicon-ok" aria-hidden="true" title="{{host.status}} {{host.last_status}}" id="host{{ host.id }}"></span>
-                  {% elif host.status == "FAILURE" %}
+                  {% elif host.status == STATE_FAILURE %}
                   <span class="glyphicon glyphicon-remove" aria-hidden="true" title="{{host.status}} {{host.last_status}}" id="host{{ host.id }}"></span>
-                  {% elif host.status == "PENDING" %}
+                  {% elif host.status == STATE_PENDING %}
                   <span class="glyphicon glyphicon-refresh monitor_state" aria-hidden="true" title="{{host.status}} {{host.last_status}}" id="host{{ host.id }}"></span>
-                  {% elif host.status == "NOTHING TO DEPLOY" %}
+                  {% elif host.status == STATE_NOTHING_TO_DEPLOY %}
                   <span class="glyphicon glyphicon-option-horizontal" aria-hidden="true" title="{{host.status}} {{host.last_status}}" id="host{{ host.id }}"></span>
                   {% else %}
                   <span class="monitor_state" id="host{{ host.id }}">&nbsp;</span>
