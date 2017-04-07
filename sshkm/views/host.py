@@ -117,11 +117,10 @@ def HostDeploy(request):
                     messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
                 except Exception as e:
                     messages.add_message(request, messages.ERROR, "Host " + host.name + " could not be deployed "+str(e))
+        except ConnectionRefusedError as e:
+            messages.add_message(request, messages.ERROR, "The host(s) could not be deployed. Remote taskqueue is not running.")
         except Exception as e:
-            if str(e) == "[Errno 111] Connection refused":
-                messages.add_message(request, messages.ERROR, "The host(s) could not be deployed. Remote taskqueue is not running.")
-            else:
-                messages.add_message(request, messages.ERROR, "The host(s) could not be deployed: "+str(e))
+            messages.add_message(request, messages.ERROR, "The host(s) could not be deployed: "+str(e))
     else:
         messages.add_message(request, messages.INFO, "Deployment is disabled in demo mode.")
 
