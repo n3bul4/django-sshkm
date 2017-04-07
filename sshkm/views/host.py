@@ -33,7 +33,7 @@ def HostList(request):
                 'STATE_FAILURE': DeployConfig.STATE_FAILURE, 
                 'STATE_NOTHING_TO_DEPLOY': DeployConfig.STATE_NOTHING_TO_DEPLOY
               }
-              
+
     return render(request, 'sshkm/host/list.html', context)
 
 @login_required
@@ -93,9 +93,9 @@ def HostSave(request):
         host.save()
         messages.add_message(request, messages.SUCCESS, "Host " + request.POST.get('name') + " sucessfully saved")
     except IntegrityError as e:
-        messages.add_message(request, messages.ERROR, "The host could not be saved.")
+        messages.add_message(request, messages.ERROR, "The host could not be saved. "+str(e))
     except Exception as e:
-        messages.add_message(request, messages.ERROR, "The host could not be saved")
+        messages.add_message(request, messages.ERROR, "The host could not be saved. "+str(e))
 
     return HttpResponseRedirect(reverse('HostList'))
 
