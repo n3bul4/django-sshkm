@@ -14,7 +14,6 @@ class Host(models.Model):
     name = models.CharField(max_length=191, unique=True)
     superuser = models.CharField(max_length=191, null=True, blank=True)
     description = models.CharField(max_length=191, null=True, blank=True)
-    #status = models.CharField(max_length=10, null=True, blank=True)
     status = models.IntegerField(null=True, blank=True)
     last_status = models.DateTimeField(null=True, blank=True)
 
