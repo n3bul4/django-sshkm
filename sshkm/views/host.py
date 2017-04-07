@@ -31,7 +31,7 @@ def HostList(request):
 
 @login_required
 def HostState(request):
-    ids = request.GET.getlist('id', request.POST.getlist('id'))
+    ids = request.POST.getlist('id', request.GET.getlist('id'))
     data = []
     
     if len(ids) > 0:
