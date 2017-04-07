@@ -125,14 +125,15 @@ $(document).ready(
     keys = Object.keys(ids);
 
     if(keys.length > 0){
-        var intervalId = setInterval(
+      var csrfTokenParam = 'csrfmiddlewaretoken='+$("input[name='csrfmiddlewaretoken']").val();
+      var intervalId = setInterval(
         function(){
           queryString = "";
 
           for(i=0; i<keys.length; i++)
             queryString += "id="+keys[i]+"&";
 
-          queryString += 'csrfmiddlewaretoken='+$("input[name='csrfmiddlewaretoken']").val()
+          queryString += csrfTokenParam;
 
           $.ajax(
             {
@@ -166,9 +167,9 @@ $(document).ready(
                     delete ids[respData[i].id];
                   }
 
-                  $('#host'+respData[i].id).removeClass();
-                  $('#host'+respData[i].id).addClass(iconclass);
-                  $('span#host'+respData[i].id).attr('title', respData[i].status+' '+respData[i].last_status);
+                  hostTag = $('#host'+respData[i].id);
+                  //attr overrides any existing attribute value!
+                  hostTag.attr({"class": iconclass, "title": respData[i].status+' '+respData[i].last_status});
                 }
 
                 keys = Object.keys(ids);
