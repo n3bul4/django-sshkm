@@ -167,7 +167,7 @@ $(document).ready(
                     default:
                       iconclass = '';
                   }
-                  //alert(respData[i].status);
+                  
                   if(respData[i].status != STATE_PENDING){
                     delete ids[respData[i].id];
                   }
