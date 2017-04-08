@@ -104,9 +104,13 @@ def getOsuserKeyMap(host_id):
         
     return osuserMap
 
-def DeployKeys(host_id, deployConfig):
-    osuserMap = getOsuserKeyMap(host_id)
-    host = Host.objects.get(id=host_id)
+def DeployKeysCelery(hostId, deployConfig):
+    host = Host.objects.get(id=hostId)
+    DeployKeys(host, deployConfig)
+
+
+def DeployKeys(host, deployConfig):
+    osuserMap = getOsuserKeyMap(host.id)
 
     if len(osuserMap) == 0:
         # nothing to deploy

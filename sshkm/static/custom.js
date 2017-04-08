@@ -159,7 +159,7 @@ $(document).ready(
                 
                 for(i=0; i<respData.length; i++) { 
                   var titleAttr = STATE_DESC[respData[i].status]+' '+respData[i].last_status;
-                                  
+
                   switch(respData[i].status) {
                     case STATE_SUCCESS:
                       iconclass = 'glyphicon glyphicon-ok';

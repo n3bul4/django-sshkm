@@ -9,13 +9,13 @@ from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError
 from django.core.exceptions import ObjectDoesNotExist
 
-from sshkm.tasks import ScheduleDeployKeys
+#from sshkm.tasks import ScheduleDeployKeys
 from sshkm.views.deploy import DeployKeys, DeployConfig, NothingToDeployException
 
 from sshkm.models import Host, Setting, Permission
 from sshkm.forms import HostForm
-from taskqueue.executor import ExecutorConnection
-
+from sshkm.tasks import RemoteTaskQueueProvider, CeleryProvider
+from kombu.exceptions import OperationalError
 
 @login_required
 def HostList(request):
@@ -28,10 +28,6 @@ def HostList(request):
 
     context = {
                 'hosts': hosts,
-                'STATE_PENDING': Host.STATE_PENDING,
-                'STATE_SUCCESS': Host.STATE_SUCCESS, 
-                'STATE_FAILURE': Host.STATE_FAILURE, 
-                'STATE_NOTHING_TO_DEPLOY': Host.STATE_NOTHING_TO_DEPLOY
               }
 
     return render(request, 'sshkm/host/list.html', context)
@@ -68,13 +64,18 @@ def HostDetail(request):
 @login_required
 def HostDelete(request):
     try:
-        if request.POST.get('id_multiple') is not None:
-            Host.objects.filter(id__in=request.POST.getlist('id_multiple')).delete()
+        idList = request.POST.getlist('id', request.GET.getlist("id"))
+        idListLength = len(idList)
+
+        if idListLength > 1:
+            Host.objects.filter(id__in=idList).delete()
             messages.add_message(request, messages.SUCCESS, "Hosts deleted")
-        else:
-            host = Host.objects.get(id=request.GET['id'])
-            delete = Host(id=request.GET['id']).delete()
+        elif idListLength == 1:
+            host = Host.objects.get(id=idList[0])
+            host.delete()
             messages.add_message(request, messages.SUCCESS, "Host " + host.name + " deleted")
+        else:
+            messages.add_message(request, messages.SUCCESS, "Did not receive any GET or POST id(s) to delete")
     except ObjectDoesNotExist as e:
         messages.add_message(request, messages.ERROR, "The host could not be deleted")
     except Exception as e:
@@ -102,32 +103,42 @@ def HostSave(request):
 @login_required
 def HostDeploy(request):
     if settings.SSHKM_DEMO is False:
-        try:
-            deployConfig = DeployConfig()
+        deployConfig = DeployConfig()
+        idList = request.POST.getlist('id', request.GET.getlist("id"))
+        idListLength = len(idList)
 
-            if request.POST.get('id_multiple') is not None:
-                pw=b'g3t1o5t' #:TODO should be in a config file
-                con = ExecutorConnection('127.0.0.1', 50000, pw)
-                idList = request.POST.getlist('id_multiple')
-                Host.objects.filter(id__in=idList).update(status=Host.STATE_PENDING) # set status of hosts to deploy to PENDING
+        if idListLength > 1:
+            hosts = Host.objects.filter(id__in=idList)
 
-                for host in request.POST.getlist('id_multiple'):
-                    con.call_async(DeployKeys, host, deployConfig)
+            try:
+                taskProvider = RemoteTaskQueueProvider("127.0.0.1", 50000, pw=b'g3t1o5t')
+                #taskProvider = CeleryProvider()
+                hosts.update(status=Host.STATE_PENDING) # set status of hosts to deploy to PENDING
+
+                for host in hosts:
+                    taskProvider.call_async(host, deployConfig)
 
                 messages.add_message(request, messages.INFO, "Multiple host deployment initiated")
-            else:
-                host = Host.objects.get(id=request.GET['id'])
-                try:
-                    deploy = DeployKeys(request.GET['id'], deployConfig)
-                    messages.add_message(request, messages.SUCCESS, "Host " + host.name + " deployed")
-                except NothingToDeployException as e:
-                    messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
-                except Exception as e:
-                    messages.add_message(request, messages.ERROR, "Host " + host.name + " could not be deployed "+str(e))
-        except ConnectionRefusedError as e:
-            messages.add_message(request, messages.ERROR, "The host(s) could not be deployed. Remote taskqueue is not running.")
-        except Exception as e:
-            messages.add_message(request, messages.ERROR, "The host(s) could not be deployed: "+str(e))
+            except (ConnectionRefusedError, OperationalError) as e: # OperationalError = Recoverable message transport connection error due to celery api
+                errorMsg = "The host(s) could not be deployed. "+taskProvider.getName()+" is not running."
+                hosts.update(status=Host.STATE_FAILURE, error_msg=errorMsg)
+                messages.add_message(request, messages.ERROR, errorMsg)
+            except Exception as e:
+                errorMsg = "The host(s) could not be deployed: "+str(e)+" "+str(e.__class__)
+                hosts.update(status=Host.STATE_FAILURE, error_msg=errorMsg)
+                messages.add_message(request, messages.ERROR, errorMsg)
+        elif idListLength == 1:
+            host = Host.objects.get(id=idList[0])
+
+            try:
+                DeployKeys(host, deployConfig)
+                messages.add_message(request, messages.SUCCESS, "Host " + host.name + " deployed")
+            except NothingToDeployException as e:
+                messages.add_message(request, messages.INFO, "Nothing to deploy for Host " + host.name)
+            except Exception as e:
+                messages.add_message(request, messages.ERROR, "Host " + host.name + " could not be deployed "+str(e))
+        else:
+             messages.add_message(request, messages.ERROR, "Did not receive any GET or POST id(s) to deploy")
     else:
         messages.add_message(request, messages.INFO, "Deployment is disabled in demo mode.")
 

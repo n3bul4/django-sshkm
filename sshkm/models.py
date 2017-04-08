@@ -16,6 +16,13 @@ class Host(models.Model):
     STATE_FAILURE = 2
     STATE_NOTHING_TO_DEPLOY = 3
 
+    STATE_DESC_MAP = [
+        "PENDING",
+        "SUCCESS",
+        "FAILURE",
+        "NOTHING TO DEPLOY",
+    ]
+
     name = models.CharField(max_length=191, unique=True)
     superuser = models.CharField(max_length=191, null=True, blank=True)
     description = models.CharField(max_length=191, null=True, blank=True)
@@ -34,8 +41,20 @@ class Host(models.Model):
         self.error_msg = error_msg
         self.save()
 
+    def getStatusDesc(self):
+        if self.status != None and self.status < len(Host.STATE_DESC_MAP) and self.status >= 0:
+            return Host.STATE_DESC_MAP[self.status]
+
+        return ""
+
+    def getTitleAttrValue(self):
+        if self.status == Host.STATE_FAILURE:
+            return self.getStatusDesc()+" "+str(self.last_status)+" "+self.error_msg
+
+        return self.getStatusDesc()+" "+str(self.last_status)
+
     def toJson(self):
-        if self.status == 2:
+        if self.status == Host.STATE_FAILURE:
             return {"id": self.id, "status": self.status, "last_status": self.last_status, "error_msg": self.error_msg}
 
         return {"id": self.id, "status": self.status, "last_status": self.last_status}

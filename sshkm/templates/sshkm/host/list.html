@@ -22,17 +22,17 @@
             <tbody>
               {% for host in hosts %}
               <tr>
-                <td><input type="checkbox" name="id_multiple" id="{{ host.id }}" value="{{ host.id }}"></td>
+                <td><input type="checkbox" name="id" id="{{ host.id }}" value="{{ host.id }}"></td>
                 <td><a href="{% url 'HostDetail' %}?id={{ host.id }}">{{ host.name }}</a></td>
                 <td>
-                  {% if host.status == STATE_SUCCESS %}
-                  <span class="glyphicon glyphicon-ok" aria-hidden="true" title="SUCCESS {{host.last_status}}" id="host{{ host.id }}"></span>
-                  {% elif host.status == STATE_FAILURE %}
-                  <span class="glyphicon glyphicon-remove" aria-hidden="true" title="FAILURE {{host.last_status}} {{host.error_msg}}" id="host{{ host.id }}"></span>
-                  {% elif host.status == STATE_PENDING %}
-                  <span class="glyphicon glyphicon-refresh monitor_state" aria-hidden="true" title="PENDING {{host.last_status}}" id="host{{ host.id }}"></span>
-                  {% elif host.status == STATE_NOTHING_TO_DEPLOY %}
-                  <span class="glyphicon glyphicon-option-horizontal" aria-hidden="true" title="NOTHING TO DEPLOY {{host.last_status}}" id="host{{ host.id }}"></span>
+                  {% if host.status == host.STATE_SUCCESS %}
+                  <span class="glyphicon glyphicon-ok" aria-hidden="true" title="{{host.getTitleAttrValue}}" id="host{{ host.id }}"></span>
+                  {% elif host.status == host.STATE_FAILURE %}
+                  <span class="glyphicon glyphicon-remove" aria-hidden="true" title="{{host.getTitleAttrValue}}" id="host{{ host.id }}"></span>
+                  {% elif host.status == host.STATE_PENDING %}
+                  <span class="glyphicon glyphicon-refresh monitor_state" aria-hidden="true" title="{{host.getTitleAttrValue}}" id="host{{ host.id }}"></span>
+                  {% elif host.status == host.STATE_NOTHING_TO_DEPLOY %}
+                  <span class="glyphicon glyphicon-option-horizontal" aria-hidden="true" title="{{host.getTitleAttrValue}}" id="host{{ host.id }}"></span>
                   {% else %}
                   <span class="monitor_state" id="host{{ host.id }}">&nbsp;</span>
                   {% endif %}
@@ -87,9 +87,9 @@
                   function(){
                     document.MultipleHosts.submit();
                   },
-                  'id_multiple',
+                  'id',
                   'please confirm',
-                  'Are you shure you want to delete selected host(s)',
+                  'Are you sure you want to delete selected host(s)',
                   'no host(s) selected',
                   'Please select at least one host'
                 )
@@ -100,9 +100,9 @@
                 document.MultipleHosts.action = '{% url 'HostDeploy' %}';
                 document.MultipleHosts.submit();
               },
-              'id_multiple',
+              'id',
               'please confirm',
-              'Are you shure you want to deploy selected host(s)',
+              'Are you sure you want to deploy selected host(s)',
               'no host(s) selected',
               'Please select at least one host'
             )
