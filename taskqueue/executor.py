@@ -5,7 +5,7 @@ import uuid
 import configparser
 
 from multiprocessing import Process, Queue
-from multiprocessing.managers import BaseManager
+from multiprocessing.managers import BaseManager, BaseProxy
 from threading import Thread
 try:
     from queue import Empty
@@ -78,13 +78,16 @@ class Executor(BaseManager):
 
     def start_server(self):
         self.logger.info("Starting server with "+str(self.worker_count)+" workers and "+str(self.worker_sleep_timeout)+" ms worker timeout")
-        
+
         for i in range(0, self.worker_count):
             w = Worker(self.queue, self.worker_sleep_timeout, self.logger)
             self.worker_list.append(w)
             w.start()
 
         Executor.get_server(self).serve_forever()
+
+    def addStartupTask(self, func, *args):
+        self.queue.put(Task(func, *args))
 
     def stop_server(self): 
         for worker in self.worker_list:
@@ -95,6 +98,8 @@ class Executor(BaseManager):
 
 class ExecutorConnection(BaseManager):
     def __init__(self, inet_addr, port, authkey):
+        if inet_addr in BaseProxy._address_to_local:
+            del BaseProxy._address_to_local[inet_addr][0].connection
         super(ExecutorConnection, self).__init__(address=(inet_addr, port), authkey=authkey)
         ExecutorConnection.register(Executor.REG_METHOD_NAME)
         ExecutorConnection.connect(self)

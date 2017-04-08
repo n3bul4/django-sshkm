@@ -30,10 +30,17 @@ if __name__ == "__main__":
 
 	logger.info("Task executor startup")
 	logger.info("Database connection info: "+str(db.connections.databases))
-	
-	
+
+	#from sshkm.models import Host
+	#from sshkm.views.deploy import DeployKeys, DeployConfig
+	#hosts = Host.objects.filter(status=Host.STATE_PENDING)
+	#deployConfig = DeployConfig()
+
+	#for host in hosts:
+	#	executor.addStartupTask(DeployKeys, host, deployConfig)
+	#	print(host.id)
+
 	if os.fork():
 		sys.exit()
 
-	
 	executor.start_server()

@@ -109,10 +109,11 @@ def HostDeploy(request):
 
         if idListLength > 1:
             hosts = Host.objects.filter(id__in=idList)
-
-            try:
-                taskProvider = RemoteTaskQueueProvider("127.0.0.1", 50000, pw=b'g3t1o5t')
-                #taskProvider = CeleryProvider()
+            taskProvider = RemoteTaskQueueProvider("127.0.0.1", 50000, pw=b'g3t1o5t')
+            #taskProvider = CeleryProvider()
+            
+            try:    
+                taskProvider.connect()
                 hosts.update(status=Host.STATE_PENDING) # set status of hosts to deploy to PENDING
 
                 for host in hosts:
@@ -127,6 +128,7 @@ def HostDeploy(request):
                 errorMsg = "The host(s) could not be deployed: "+str(e)+" "+str(e.__class__)
                 hosts.update(status=Host.STATE_FAILURE, error_msg=errorMsg)
                 messages.add_message(request, messages.ERROR, errorMsg)
+                raise
         elif idListLength == 1:
             host = Host.objects.get(id=idList[0])
 
